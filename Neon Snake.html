@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Neon Snake</title>
+<style>
+:root{--bg:#07060f;--card:#120f24;--line:#2a2450;--txt:#e9e6ff;--mut:#8b86b8;--c1:#00f5d4;--c2:#ff2e93;--c3:#ffd60a;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
+body{margin:0;min-height:100vh;background:radial-gradient(circle at 20% 0,#1b1040 0,var(--bg) 55%);color:var(--txt);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;display:flex;justify-content:center}
+.app{width:100%;max-width:440px;padding:14px;display:flex;flex-direction:column;gap:12px}
+h1{margin:0;text-align:center;font-size:1.7rem;letter-spacing:3px;color:var(--c1);text-shadow:0 0 12px var(--c1),0 0 30px #00f5d455}
+h1 span{color:var(--c2);text-shadow:0 0 12px var(--c2)}
+.stats{display:flex;gap:10px}
+.stat{flex:1;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:8px 12px;text-align:center}
+.stat small{display:block;color:var(--mut);font-size:.7rem;letter-spacing:1px;text-transform:uppercase}
+.stat b{font-size:1.5rem;transition:transform .15s}
+.stat b.pop{transform:scale(1.35);color:var(--c3)}
+.diff{display:flex;gap:6px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:5px}
+.diff button{flex:1;border:0;background:transparent;color:var(--mut);padding:9px 0;border-radius:10px;font-weight:600;font-size:.9rem;cursor:pointer;transition:.2s}
+.diff button.on{background:linear-gradient(135deg,var(--c1),#00b4d8);color:#03110f;box-shadow:0 0 14px #00f5d477}
+.board{position:relative;width:100%;aspect-ratio:1;border-radius:18px;border:2px solid var(--line);box-shadow:0 0 30px #7b2ff733,inset 0 0 30px #00000088;overflow:hidden;touch-action:none;background:#0a0818}
+canvas{width:100%;height:100%;display:block}
+.overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;background:#07060fcc;backdrop-filter:blur(3px);text-align:center;transition:opacity .3s;padding:16px}
+.overlay.hide{opacity:0;pointer-events:none}
+.overlay h2{margin:0;font-size:2rem;color:var(--c1);text-shadow:0 0 14px var(--c1)}
+.overlay.over h2{color:var(--c2);text-shadow:0 0 14px var(--c2)}
+.overlay p{margin:0;color:var(--mut)}
+.actions{display:flex;gap:8px}
+.actions button{flex:1;border:0;padding:13px 0;border-radius:12px;font-size:.95rem;font-weight:700;cursor:pointer;color:#fff;transition:transform .1s,box-shadow .2s}
+.actions button:active{transform:scale(.95)}
+#bStart{background:linear-gradient(135deg,#00c9a7,var(--c1));color:#03110f;box-shadow:0 0 14px #00f5d455}
+#bPause{background:linear-gradient(135deg,#7b2ff7,#a855f7);box-shadow:0 0 14px #7b2ff755}
+#bRestart{background:linear-gradient(135deg,#e11d74,var(--c2));box-shadow:0 0 14px #ff2e9355}
+.dpad{display:grid;grid-template-columns:repeat(3,72px);grid-template-rows:repeat(2,64px);gap:8px;justify-content:center;margin-top:2px}
+.dpad button{border:1px solid var(--line);background:var(--card);color:var(--c1);font-size:1.6rem;border-radius:16px;cursor:pointer;transition:.1s}
+.dpad button:active{background:var(--c1);color:#03110f;box-shadow:0 0 16px var(--c1)}
+.dpad .u{grid-column:2;grid-row:1}.dpad .l{grid-column:1;grid-row:2}.dpad .d{grid-column:2;grid-row:2}.dpad .r{grid-column:3;grid-row:2}
+.hint{text-align:center;color:var(--mut);font-size:.75rem;margin:0}
+@media(min-width:700px){.dpad{display:none}}
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>NEON <span>SNAKE</span></h1>
+  <div class="stats">
+    <div class="stat"><small>Skor</small><b id="score">0</b></div>
+    <div class="stat"><small>High Score</small><b id="best">0</b></div>
+  </div>
+  <div class="diff" id="diff">
+    <button data-d="easy">Mudah</button>
+    <button data-d="medium" class="on">Sedang</button>
+    <button data-d="hard">Sulit</button>
+  </div>
+  <div class="board" id="board">
+    <canvas id="cv" width="400" height="400"></canvas>
+    <div class="overlay" id="ov"><h2 id="ovT">Siap Main?</h2><p id="ovP">Tekan Mulai atau tombol arah</p></div>
+  </div>
+  <div class="actions">
+    <button id="bStart">▶ Mulai</button>
+    <button id="bPause">⏸ Pause</button>
+    <button id="bRestart">🔄 Restart</button>
+  </div>
+  <div class="dpad">
+    <button class="u" data-k="U">▲</button><button class="l" data-k="L">◀</button><button class="d" data-k="D">▼</button><button class="r" data-k="R">▶</button>
+  </div>
+  <p class="hint">Panah / WASD / swipe di papan • Spasi = Pause</p>
+</div>
+<script>
+(()=>{
+const N=20,S=400/N,cv=document.getElementById('cv'),ctx=cv.getContext('2d');
+const $=id=>document.getElementById(id);
+const SPEED={easy:220,medium:160,hard:110};
+const DIRS={U:[0,-1],D:[0,1],L:[-1,0],R:[1,0]};
+let diff='medium',snake,prev,dir,queue,food,score,state='idle',acc=0,last=0,particles=[];
+const store={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
+const hs=()=>+store.get('snake_best_'+diff)||0;
+function showBest(){$('best').textContent=hs()}
+function reset(){
+  snake=[{x:10,y:10},{x:9,y:10},{x:8,y:10}];prev=snake.map(s=>({...s}));
+  dir='R';queue=[];score=0;acc=0;particles=[];$('score').textContent=0;placeFood();showBest();
+}
+function placeFood(){
+  do{food={x:Math.random()*N|0,y:Math.random()*N|0}}while(snake.some(s=>s.x===food.x&&s.y===food.y));
+}
+function overlay(t,p,over){const o=$('ov');$('ovT').textContent=t;$('ovP').textContent=p;o.classList.toggle('over',!!over);o.classList.remove('hide')}
+function hide(){$('ov').classList.add('hide')}
+function start(){if(state==='running')return;if(state==='paused'){resume();return}if(state==='over'||state==='idle'){reset()}state='running';hide();last=performance.now()}
+function pause(){if(state==='running'){state='paused';overlay('Pause','Tekan Mulai untuk lanjut')}else if(state==='paused')resume()}
+function resume(){state='running';hide();last=performance.now()}
+function restart(){reset();state='running';hide();last=performance.now()}
+function turn(k){
+  if(state==='idle'||state==='over'){start()}
+  if(state==='paused')return;
+  const ref=queue.length?queue[queue.length-1]:dir,a=DIRS[ref],b=DIRS[k];
+  if(a[0]+b[0]===0&&a[1]+b[1]===0||k===ref)return;
+  if(queue.length<3)queue.push(k);
+}
+function step(){
+  if(queue.length)dir=queue.shift();
+  const d=DIRS[dir],old=snake.map(s=>({...s})),h={x:snake[0].x+d[0],y:snake[0].y+d[1]};
+  const eat=h.x===food.x&&h.y===food.y,body=eat?snake:snake.slice(0,-1);
+  if(h.x<0||h.y<0||h.x>=N||h.y>=N||body.some(s=>s.x===h.x&&s.y===h.y)){return gameOver()}
+  snake.unshift(h);if(!eat)snake.pop();
+  prev=snake.map((_,i)=>old[Math.min(i,old.length-1)]);
+  if(eat){
+    score++;const el=$('score');el.textContent=score;el.classList.add('pop');setTimeout(()=>el.classList.remove('pop'),150);
+    burst(food.x,food.y);placeFood();
+    if(score>hs()){store.set('snake_best_'+diff,score);showBest()}
+    if(navigator.vibrate)try{navigator.vibrate(20)}catch(e){}
+  }
+}
+function gameOver(){
+  state='over';overlay('Game Over 💀','Skor: '+score+' • Tekan Mulai / arah',true);
+  if(navigator.vibrate)try{navigator.vibrate(120)}catch(e){}
+}
+function burst(x,y){for(let i=0;i<14;i++){const a=Math.random()*6.28,v=1+Math.random()*3;particles.push({x:(x+.5)*S,y:(y+.5)*S,vx:Math.cos(a)*v,vy:Math.sin(a)*v,l:1})}}
+function draw(t){
+  const sp=SPEED[diff];
+  ctx.fillStyle='#0a0818';ctx.fillRect(0,0,400,400);
+  ctx.strokeStyle='#ffffff08';ctx.lineWidth=1;
+  for(let i=1;i<N;i++){ctx.beginPath();ctx.moveTo(i*S,0);ctx.lineTo(i*S,400);ctx.moveTo(0,i*S);ctx.lineTo(400,i*S);ctx.stroke()}
+  if(!snake)return;
+  // food
+  const pulse=1+Math.sin(t/180)*.12,fx=(food.x+.5)*S,fy=(food.y+.5)*S;
+  ctx.save();ctx.shadowColor='#ff2e93';ctx.shadowBlur=18;ctx.fillStyle='#ff2e93';
+  ctx.beginPath();ctx.arc(fx,fy,S*.34*pulse,0,6.28);ctx.fill();
+  ctx.shadowBlur=0;ctx.fillStyle='#ffd60a';ctx.beginPath();ctx.arc(fx-3,fy-3,2.5,0,6.28);ctx.fill();ctx.restore();
+  // snake (interpolated)
+  const p=state==='running'?Math.min(acc/sp,1):1,pts=snake.map((s,i)=>({x:(prev[i].x+(s.x-prev[i].x)*p+.5)*S,y:(prev[i].y+(s.y-prev[i].y)*p+.5)*S}));
+  ctx.save();ctx.lineCap='round';ctx.lineJoin='round';ctx.shadowColor='#00f5d4';ctx.shadowBlur=16;
+  for(let i=pts.length-1;i>0;i--){
+    const k=1-i/pts.length*.55;ctx.strokeStyle=`hsl(${170+ (1-k)*90},100%,${50+k*8}%)`;
+    ctx.lineWidth=S*(.55+.3*k);ctx.beginPath();ctx.moveTo(pts[i].x,pts[i].y);ctx.lineTo(pts[i-1].x,pts[i-1].y);ctx.stroke();
+  }
+  const h=pts[0];ctx.fillStyle='#00f5d4';ctx.beginPath();ctx.arc(h.x,h.y,S*.46,0,6.28);ctx.fill();ctx.restore();
+  // eyes
+  const d=DIRS[dir],px=-d[1],py=d[0];ctx.fillStyle='#04120f';
+  for(const s of[-1,1]){ctx.beginPath();ctx.arc(h.x+d[0]*4+px*s*4.5,h.y+d[1]*4+py*s*4.5,2.4,0,6.28);ctx.fill()}
+  // particles
+  particles=particles.filter(q=>q.l>0);
+  for(const q of particles){q.x+=q.vx;q.y+=q.vy;q.l-=.04;ctx.globalAlpha=Math.max(q.l,0);ctx.fillStyle='#ffd60a';ctx.fillRect(q.x-2,q.y-2,4,4)}
+  ctx.globalAlpha=1;
+}
+function loop(t){
+  if(state==='running'){
+    acc+=t-last;last=t;const sp=SPEED[diff];
+    while(acc>=sp&&state==='running'){acc-=sp;step()}
+  }
+  draw(t);requestAnimationFrame(loop);
+}
+// controls
+const keyMap={ArrowUp:'U',ArrowDown:'D',ArrowLeft:'L',ArrowRight:'R',w:'U',s:'D',a:'L',d:'R',W:'U',S:'D',A:'L',D:'R'};
+addEventListener('keydown',e=>{
+  if(keyMap[e.key]){e.preventDefault();turn(keyMap[e.key])}
+  else if(e.key===' '){e.preventDefault();state==='idle'||state==='over'?start():pause()}
+});
+document.querySelectorAll('.dpad button').forEach(b=>{
+  b.addEventListener('pointerdown',e=>{e.preventDefault();turn(b.dataset.k)});
+});
+let tx=0,ty=0;const board=$('board');
+board.addEventListener('touchstart',e=>{tx=e.touches[0].clientX;ty=e.touches[0].clientY},{passive:true});
+board.addEventListener('touchmove',e=>e.preventDefault(),{passive:false});
+board.addEventListener('touchend',e=>{
+  const t=e.changedTouches[0],dx=t.clientX-tx,dy=t.clientY-ty;
+  if(Math.max(Math.abs(dx),Math.abs(dy))<24){if(state==='paused')resume();else if(state==='idle'||state==='over')start();return}
+  turn(Math.abs(dx)>Math.abs(dy)?(dx>0?'R':'L'):(dy>0?'D':'U'));
+});
+$('bStart').onclick=start;$('bPause').onclick=pause;$('bRestart').onclick=restart;
+document.querySelectorAll('#diff button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('#diff button').forEach(x=>x.classList.remove('on'));b.classList.add('on');
+  diff=b.dataset.d;
+  if(state==='running'||state==='paused'){reset();state='idle';overlay('Siap Main?','Tingkat kesulitan diubah')}else showBest();
+});
+reset();requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
